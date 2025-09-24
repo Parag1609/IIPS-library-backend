@@ -1,5 +1,6 @@
 import express from "express";
 import {
+    createMember,
   getAllMembers,
   getMemberById,
   updateMember,
@@ -11,12 +12,11 @@ import {
 
 const router = express.Router();
 
+router.post("/",createMember);
 router.get("/", getAllMembers);
 router.get("/:id", getMemberById);
 router.put("/:id", updateMember);
 router.patch("/:id/status", updateCardStatus);
-router.post("/:id/issue/:bookId", issueBook);
-router.post("/:id/return/:bookId", returnBook);
 router.delete("/:id", deleteMember);
 
 export default router;

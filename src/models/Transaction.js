@@ -16,8 +16,7 @@ const transactionSchema = new mongoose.Schema({
     default: Date.now
   },
   dueDate: {
-    type: Date,
-    required: true
+    type: Date
   },
   returnDate: {
     type: Date,
@@ -27,11 +26,6 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     enum: ["issued", "returned", "overdue"],
     default: "issued"
-  },
-  fineAmount: {
-    type: Number,
-    default: 0,
-    min: 0
   }
 }, { timestamps: true });
 
@@ -42,11 +36,8 @@ transactionSchema.pre("save", function (next) {
   if (this.returnDate) {
     this.status = "returned";
   } else {
-    if (this.dueDate && this.dueDate < new Date()) {
-      this.status = "overdue";
-    } else {
-      this.status = "issued";
-    }
+    this.status = "issued";
+
   }
   next();
 });

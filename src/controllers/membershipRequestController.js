@@ -1,5 +1,5 @@
-import MembershipRequest from "../models/membershipRequestModel.js";
-import Member from "../models/memberModel.js";
+import MembershipRequest from "../models/MembershipRequest.js";
+import Member from "../models/LibraryCard.js";
 
 /**
  * @desc Create a new membership request
@@ -56,12 +56,28 @@ export const createRequest = async (req, res) => {
  */
 export const getAllRequests = async (req, res) => {
   try {
-    const requests = await MembershipRequest.find().sort({ createdAt: -1 });
-    res.status(200).json(requests);
+    // Extract possible query params
+    const { enrollment_number, firstName, surname, semester, course, mobile, status } = req.query;
+
+    // Build dynamic filter object
+    let filter = {};
+    if (enrollment_number) filter.enrollment_number = enrollment_number; // exact match
+    if (firstName) filter.firstName = new RegExp(firstName, "i"); // partial, case-insensitive
+    if (surname) filter.surname = new RegExp(surname, "i");
+    if (semester) filter.semester = semester;
+    if (course) filter.course = course;
+    if (mobile) filter.mobile = mobile; // exact match
+    if (status) filter.status = status; // pending, approved, rejected
+
+    // Query requests with filters and sort by newest first
+    const requests = await MembershipRequest.find(filter).sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, count: requests.length, data: requests });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching requests", error: error.message });
+    res.status(500).json({ success: false, message: "Error fetching requests", error: error.message });
   }
 };
+
 
 /**
  * @desc Get membership request by ID

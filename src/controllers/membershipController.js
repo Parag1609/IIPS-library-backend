@@ -57,12 +57,31 @@ export const createMember = async (req, res) => {
  */
 export const getAllMembers = async (req, res) => {
   try {
-    const members = await Member.find().populate("issuedBooks", "title accession_number author_name");
-    res.status(200).json(members);
+    // Extract possible query params
+    const { memberId, firstName, surname, enrollment_number, semester, course, cardStatus } = req.query;
+
+    // Build dynamic filter object
+    let filter = {};
+    if (memberId) filter.memberId = memberId; // exact match
+    if (firstName) filter.firstName = new RegExp(firstName, "i"); // partial, case-insensitive
+    if (surname) filter.surname = new RegExp(surname, "i");
+    if (enrollment_number) filter.enrollment_number = enrollment_number; // exact match
+    if (semester) filter.semester = semester;
+    if (course) filter.course = course;
+    if (cardStatus) filter.cardStatus = cardStatus;
+
+    // Query members with optional filters and populate issuedBooks
+    const members = await Member.find(filter).populate(
+      "issuedBooks",
+      "title accession_number author_name"
+    );
+
+    res.status(200).json({ success: true, count: members.length, data: members });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching members", error: error.message });
+    res.status(500).json({ success: false, message: "Error fetching members", error: error.message });
   }
 };
+
 
 /**
  * @desc Get member by ID
@@ -116,10 +135,11 @@ export const updateCardStatus = async (req, res) => {
   }
 };
 
+
 /**
  * @desc Issue a book to member + transaction log
  * @route POST /api/members/:id/issue/:bookId
- */
+ 
 export const issueBook = async (req, res) => {
   try {
     const member = await Member.findById(req.params.id);
@@ -143,14 +163,14 @@ export const issueBook = async (req, res) => {
       return res.status(400).json({ message: "Book already issued to this member" });
     }
 
-    // ✅ Check if book is already issued to another member (active transaction)
+    // Check if book is already issued to another member (active transaction)
     const activeTxn = await Transaction.findOne({
       book: book._id,
       returnDate: null, // means not yet returned
     });
 
     if (activeTxn) {
-      return res.status(400).json({ message: "Book is already issued to another member" });
+      return res.status(400).json({ message: "Book is already issued to another member"});
     }
 
     // Proceed to issue
@@ -160,7 +180,7 @@ export const issueBook = async (req, res) => {
     const txn = new Transaction({
       member: member._id,
       book: book._id,
-      type: "issue",
+      status: "issued",
       issueDate: new Date(),
     });
     await txn.save();
@@ -175,10 +195,10 @@ export const issueBook = async (req, res) => {
   }
 };
 
-/**
+
  * @desc Return a book from member + transaction log
  * @route POST /api/members/:id/return/:bookId
- */
+ 
 export const returnBook = async (req, res) => {
   try {
     const member = await Member.findById(req.params.id);
@@ -198,7 +218,7 @@ export const returnBook = async (req, res) => {
 
     // update transaction (close the last issue transaction for this book)
     const txn = await Transaction.findOneAndUpdate(
-      { member: member._id, book: book._id, type: "issue", returnDate: null },
+      { member: member._id, book: book._id, status: "issued", returnDate: null },
       { returnDate: new Date() },
       { new: true }
     );
@@ -208,7 +228,7 @@ export const returnBook = async (req, res) => {
     res.status(500).json({ message: "Error returning book", error: error.message });
   }
 };
-
+*/
 /**
  * @desc Delete member
  * @route DELETE /api/members/:id
