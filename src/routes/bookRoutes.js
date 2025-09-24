@@ -6,10 +6,13 @@ import {
     updateBook,
     deleteBook
 } from "../controllers/bookController.js";
+import {importBooksFromCSV} from "../controllers/csvImportController.js";
+import {uploadcsv} from "../middleware/multer.middleware.js";
 
 const router = express.Router();
 
 router.post("/",addBook);
+router.post("/upload-csv" ,uploadcsv.single("file"), importBooksFromCSV);
 router.get("/", getBooks);
 router.get("/:id", getBookById);
 router.put("/:id", updateBook);
