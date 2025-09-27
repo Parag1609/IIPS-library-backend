@@ -1,28 +1,28 @@
 import mongoose from "mongoose";
 
 const membershipRequestSchema = new mongoose.Schema({
-  enrollment_number: { 
+  Enrollment_Number: { 
     type: String, 
     required: true, 
     unique: true,
     trim: true,
     uppercase: true 
   },
-  firstName: { type: String, required: true, trim: true },
-  surname: { type: String, required: true, trim: true },
-  fatherName: { type: String, required: true, trim: true },
-  semester: { type: String, required: true, trim: true },
-  course: { type: String, required: true, trim: true },
-  mobile: { 
+  First_Name: { type: String, required: true, trim: true },
+  Surname: { type: String, required: true, trim: true },
+  Fathers_Name: { type: String, required: true, trim: true },
+  Semester: { type: String, required: true, trim: true },
+  Course: { type: String, required: true, trim: true },
+  Mobile: { 
     type: String, 
     required: true, 
     trim: true,
     match: [/^[6-9]\d{9}$/, "Please provide a valid 10-digit Indian mobile number"]
   },
-  address: { type: String, required: true, trim: true },
-  photo: { type: String, required: true },  
-  fee_receipt: { type: String, required: true },
-  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" }
+  Address: { type: String, required: true, trim: true },
+  Passport_Size_Photo: { type: String, required: true },  
+  Fee_Receipt: { type: String, required: true },
+  Status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" }
 }, { timestamps: true });
 
 export default mongoose.model("MembershipRequest", membershipRequestSchema);

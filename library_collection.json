@@ -1,0 +1,247 @@
+{
+  "info": {
+    "name": "Library Management APIs",
+    "_postman_id": "d3b25a64-6f92-4b43-84e9-111111111111",
+    "description": "Postman collection for Library Management Project (Books, Members, Membership Requests, Transactions). Includes all CRUD routes, filters, and CSV upload examples.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Books",
+      "item": [
+        {
+          "name": "Add Book",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"C Programming\",\n  \"author\": \"Dennis Ritchie\",\n  \"accession_number\": \"B001\",\n  \"publication\": \"PHI\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/books", "host": ["{{baseUrl}}"], "path": ["books"] }
+          }
+        },
+        {
+          "name": "Import Books from CSV",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "multipart/form-data" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": [] }]
+            },
+            "url": { "raw": "{{baseUrl}}/books/upload-csv", "host": ["{{baseUrl}}"], "path": ["books", "upload-csv"] }
+          }
+        },
+        {
+          "name": "Get All Books (with filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/books?title=Java&author=Herbert&accession_number=B001&publication=McGraw",
+              "host": ["{{baseUrl}}"],
+              "path": ["books"],
+              "query": [
+                { "key": "title", "value": "Java" },
+                { "key": "author", "value": "Herbert" },
+                { "key": "accession_number", "value": "B001" },
+                { "key": "publication", "value": "McGraw" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Book by ID",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/books/:id", "host": ["{{baseUrl}}"], "path": ["books", ":id"] } }
+        },
+        {
+          "name": "Update Book",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Title\",\n  \"author\": \"Updated Author\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/books/:id", "host": ["{{baseUrl}}"], "path": ["books", ":id"] }
+          }
+        },
+        {
+          "name": "Delete Book",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/books/:id", "host": ["{{baseUrl}}"], "path": ["books", ":id"] } }
+        }
+      ]
+    },
+    {
+      "name": "Members",
+      "item": [
+        {
+          "name": "Create Member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"M001\",\n  \"firstName\": \"John\",\n  \"surname\": \"Doe\",\n  \"enrollment_number\": \"E123\",\n  \"semester\": 5,\n  \"course\": \"IT\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/members", "host": ["{{baseUrl}}"], "path": ["members"] }
+          }
+        },
+        {
+          "name": "Get All Members (with filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/members?memberId=M001&firstName=John&surname=Doe&enrollment_number=E123&semester=5&course=IT&cardStatus=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["members"],
+              "query": [
+                { "key": "memberId", "value": "M001" },
+                { "key": "firstName", "value": "John" },
+                { "key": "surname", "value": "Doe" },
+                { "key": "enrollment_number", "value": "E123" },
+                { "key": "semester", "value": "5" },
+                { "key": "course", "value": "IT" },
+                { "key": "cardStatus", "value": "active" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Member by ID",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/members/:id", "host": ["{{baseUrl}}"], "path": ["members", ":id"] } }
+        },
+        {
+          "name": "Update Member",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Jane\",\n  \"surname\": \"Smith\"\n}" },
+            "url": { "raw": "{{baseUrl}}/members/:id", "host": ["{{baseUrl}}"], "path": ["members", ":id"] }
+          }
+        },
+        {
+          "name": "Update Member Card Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"cardStatus\": \"inactive\"\n}" },
+            "url": { "raw": "{{baseUrl}}/members/:id/status", "host": ["{{baseUrl}}"], "path": ["members", ":id", "status"] }
+          }
+        },
+        {
+          "name": "Delete Member",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/members/:id", "host": ["{{baseUrl}}"], "path": ["members", ":id"] } }
+        }
+      ]
+    },
+    {
+      "name": "Membership Requests",
+      "item": [
+        {
+          "name": "Create Membership Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enrollment_number\": \"E123\",\n  \"firstName\": \"Alice\",\n  \"surname\": \"Johnson\",\n  \"semester\": 3,\n  \"course\": \"CS\",\n  \"mobile\": \"9876543210\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/membership-requests", "host": ["{{baseUrl}}"], "path": ["membership-requests"] }
+          }
+        },
+        {
+          "name": "Import Membership Requests from CSV",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "multipart/form-data" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+            "url": { "raw": "{{baseUrl}}/membership-requests/upload-csv", "host": ["{{baseUrl}}"], "path": ["membership-requests", "upload-csv"] }
+          }
+        },
+        {
+          "name": "Get All Membership Requests (with filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/membership-requests?enrollment_number=E123&firstName=Alice&surname=Johnson&semester=3&course=CS&mobile=9876543210&status=pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership-requests"],
+              "query": [
+                { "key": "enrollment_number", "value": "E123" },
+                { "key": "firstName", "value": "Alice" },
+                { "key": "surname", "value": "Johnson" },
+                { "key": "semester", "value": "3" },
+                { "key": "course", "value": "CS" },
+                { "key": "mobile", "value": "9876543210" },
+                { "key": "status", "value": "pending" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Membership Request by ID",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/membership-requests/:id", "host": ["{{baseUrl}}"], "path": ["membership-requests", ":id"] } }
+        },
+        {
+          "name": "Approve Membership Request",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/membership-requests/:id/approve", "host": ["{{baseUrl}}"], "path": ["membership-requests", ":id", "approve"] } }
+        },
+        {
+          "name": "Reject Membership Request",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/membership-requests/:id/reject", "host": ["{{baseUrl}}"], "path": ["membership-requests", ":id", "reject"] } }
+        },
+        {
+          "name": "Delete Membership Request",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/membership-requests/:id", "host": ["{{baseUrl}}"], "path": ["membership-requests", ":id"] } }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Issue Book",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"memberId\": \"M001\",\n  \"bookId\": \"B001\"\n}" },
+            "url": { "raw": "{{baseUrl}}/transactions/issue", "host": ["{{baseUrl}}"], "path": ["transactions", "issue"] }
+          }
+        },
+        {
+          "name": "Return Book",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{baseUrl}}/transactions/return/:transactionId", "host": ["{{baseUrl}}"], "path": ["transactions", "return", ":transactionId"] }
+          }
+        },
+        {
+          "name": "Get All Transactions (with filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/transactions?memberId=M001&bookId=B001&status=issued&issueDateFrom=2025-01-01&issueDateTo=2025-12-31&returnDateFrom=2025-01-01&returnDateTo=2025-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["transactions"],
+              "query": [
+                { "key": "memberId", "value": "M001" },
+                { "key": "bookId", "value": "B001" },
+                { "key": "status", "value": "issued" },
+                { "key": "issueDateFrom", "value": "2025-01-01" },
+                { "key": "issueDateTo", "value": "2025-12-31" },
+                { "key": "returnDateFrom", "value": "2025-01-01" },
+                { "key": "returnDateTo", "value": "2025-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/transactions/:id", "host": ["{{baseUrl}}"], "path": ["transactions", ":id"] } }
+        }
+      ]
+    }
+  ],
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:5000/api" }]
+}

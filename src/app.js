@@ -9,7 +9,6 @@ import transactionRoutes from "./routes/transactionRoutes.js";
 
 dotenv.config();
 connectDB();
-
 const app = express();
 
 // Middlewares

@@ -8,39 +8,39 @@ import Member from "../models/LibraryCard.js";
 export const createRequest = async (req, res) => {
   try {
     const {
-      enrollment_number,
-      firstName,
-      surname,
-      fatherName,
-      semester,
-      course,
-      mobile,
-      address,
+      Enrollment_Number,
+      First_Name,
+      Surname,
+      Fathers_Name,
+      Semester,
+      Course,
+      Mobile,
+      Address,
     } = req.body;
 
     // Check duplicates (in requests & members)
-    const existingRequest = await MembershipRequest.findOne({ enrollment_number });
-    const existingMember = await Member.findOne({ enrollment: enrollment_number });
+    const existingRequest = await MembershipRequest.findOne({ Enrollment_Number });
+    const existingMember = await Member.findOne({ enrollment_number: Enrollment_Number });
 
     if (existingRequest || existingMember) {
       return res.status(400).json({ message: "Enrollment number already exists in system" });
     }
 
     // File upload paths (via multer)
-    const photo = req.files?.photo ? req.files.photo[0].path : null;
-    const fee_receipt = req.files?.fee_receipt ? req.files.fee_receipt[0].path : null;
+    const Passport_Size_Photo = req.files?.Passport_Size_Photo ? req.files.Passport_Size_Photo[0].path : null;
+    const Fee_Receipt = req.files?.Fee_Receipt ? req.files.Fee_Receipt[0].path : null;
 
     const newRequest = new MembershipRequest({
-      enrollment_number,
-      firstName,
-      surname,
-      fatherName,
-      semester,
-      course,
-      mobile,
-      address,
-      photo,
-      fee_receipt,
+      Enrollment_Number,
+      First_Name,
+      Surname,
+      Fathers_Name,
+      Semester,
+      Course,
+      Mobile,
+      Address,
+      Passport_Size_Photo,
+      Fee_Receipt,
     });
 
     await newRequest.save();
@@ -57,17 +57,17 @@ export const createRequest = async (req, res) => {
 export const getAllRequests = async (req, res) => {
   try {
     // Extract possible query params
-    const { enrollment_number, firstName, surname, semester, course, mobile, status } = req.query;
+    const { Enrollment_Number, First_Name, Surname, Semester, Course, Mobile, Status } = req.query;
 
     // Build dynamic filter object
     let filter = {};
-    if (enrollment_number) filter.enrollment_number = enrollment_number; // exact match
-    if (firstName) filter.firstName = new RegExp(firstName, "i"); // partial, case-insensitive
-    if (surname) filter.surname = new RegExp(surname, "i");
-    if (semester) filter.semester = semester;
-    if (course) filter.course = course;
-    if (mobile) filter.mobile = mobile; // exact match
-    if (status) filter.status = status; // pending, approved, rejected
+    if (Enrollment_Number) filter.Enrollment_Number = Enrollment_Number; // exact match
+    if (First_Name) filter.First_Name = new RegExp(First_Name, "i"); // partial, case-insensitive
+    if (Surname) filter.Surname = new RegExp(Surname, "i");
+    if (Semester) filter.Semester = Semester;
+    if (Course) filter.Course = Course;
+    if (Mobile) filter.Mobile = Mobile; // exact match
+    if (Status) filter.Status = Status; // pending, approved, rejected
 
     // Query requests with filters and sort by newest first
     const requests = await MembershipRequest.find(filter).sort({ createdAt: -1 });
@@ -108,7 +108,7 @@ export const approveRequest = async (req, res) => {
     }
 
     // Check if already a member
-    const existingMember = await Member.findOne({ enrollment: request.enrollment_number });
+    const existingMember = await Member.findOne({ enrollment_number: request.Enrollment_Number });
     if (existingMember) {
       return res.status(400).json({ message: "This enrollment is already a member" });
     }
@@ -118,21 +118,21 @@ export const approveRequest = async (req, res) => {
 
     const newMember = new Member({
       memberId,
-      enrollment: request.enrollment_number,
-      firstName: request.firstName,
-      surname: request.surname,
-      fatherName: request.fatherName,
-      semester: request.semester,
-      course: request.course,
-      mobile: request.mobile,
-      address: request.address,
-      photo: request.photo,
+      enrollment_number: request.Enrollment_Number,
+      firstName: request.First_Name,
+      surname: request.Surname,
+      fatherName: request.Fathers_Name,
+      semester: request.Semester,
+      course: request.Course,
+      mobile: request.Mobile,
+      address: request.Address,
+      photo: request.Passport_Size_Photo,
     });
 
     await newMember.save();
 
     // Update request status
-    request.status = "approved";
+    request.Status = "approved";
     await request.save();
 
     res.status(201).json({ message: "Membership approved", member: newMember });
@@ -150,11 +150,11 @@ export const rejectRequest = async (req, res) => {
     const request = await MembershipRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ message: "Request not found" });
 
-    if (request.status === "rejected") {
+    if (request.Status === "rejected") {
       return res.status(400).json({ message: "Request already rejected" });
     }
 
-    request.status = "rejected";
+    request.Status = "rejected";
     await request.save();
 
     res.status(200).json({ message: "Membership request rejected" });

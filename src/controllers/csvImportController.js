@@ -1,6 +1,7 @@
 import fs from "fs";
 import csv from "fast-csv";
 import Book from "../models/Book.js";
+import MembershipRequest from "../models/MembershipRequest.js"
 
 export const importBooksFromCSV = async (req, res) => {
   try {
@@ -50,6 +51,7 @@ export const importBooksFromCSV = async (req, res) => {
               message: "CSV Import Completed (with some duplicates skipped)",
               inserted: insertedCount,
               skipped: err.writeErrors.length,
+              error: err,
             });
           } else {
             res
@@ -67,9 +69,7 @@ export const importBooksFromCSV = async (req, res) => {
 
 export const importMembershipRequestsFromCSV = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "Please upload a CSV file" });
-    }
+    if (!req.file) return res.status(400).json({ message: "Please upload a CSV file" });
 
     const filePath = req.file.path;
     const results = [];
@@ -81,23 +81,20 @@ export const importMembershipRequestsFromCSV = async (req, res) => {
       .on("end", async () => {
         try {
           const requestsToInsert = results.map((record) => ({
-            enrollment_number: record.enrollment_number?.trim().toUpperCase(),
-            firstName: record.firstName?.trim(),
-            surname: record.surname?.trim(),
-            fatherName: record.fatherName?.trim(),
-            semester: record.semester?.trim(),
-            course: record.course?.trim(),
-            mobile: record.mobile?.trim(),
-            address: record.address?.trim(),
-            photo: record.photo?.trim(), // path/url to photo
-            fee_receipt: record.fee_receipt?.trim(),
-            status: record.status || "pending",
+            Enrollment_Number: record.Enrollment_Number?.trim().toUpperCase(),
+            First_Name: record.First_Name?.trim(),
+            Surname: record.Surname?.trim(),
+            Fathers_Name: record.Fathers_Name?.trim(),
+            Semester: record.Semester?.trim(),
+            Course: record.Course?.trim(),
+            Mobile: record.Mobile?.trim(),
+            Address: record.Address?.trim(),
+            Passport_Size_Photo: record.Passport_Size_Photo?.trim(),
+            Fee_Receipt: record.Fee_Receipt?.trim(),
+            Status: record.Status || "pending"
           }));
 
-          const inserted = await MembershipRequest.insertMany(requestsToInsert, {
-            ordered: false, // continue even if duplicates
-          });
-
+          const inserted = await MembershipRequest.insertMany(requestsToInsert, { ordered: false });
           fs.unlinkSync(filePath);
 
           res.status(201).json({
@@ -105,29 +102,25 @@ export const importMembershipRequestsFromCSV = async (req, res) => {
             inserted: inserted.length,
             skipped: results.length - inserted.length,
           });
+
         } catch (err) {
           fs.unlinkSync(filePath);
-
           if (err.writeErrors) {
             const insertedCount = results.length - err.writeErrors.length;
             res.status(201).json({
-              message:
-                "Membership Requests CSV Import Completed (with some duplicates skipped)",
+              message: "Membership Requests CSV Import Completed (with some duplicates skipped)",
               inserted: insertedCount,
               skipped: err.writeErrors.length,
+              error:err,
             });
           } else {
-            res.status(500).json({
-              message: "Error importing membership requests",
-              error: err.message,
-            });
+            res.status(500).json({ message: "Error importing membership requests", error: err.message });
           }
         }
       });
+
   } catch (error) {
-    res.status(500).json({
-      message: "Error importing membership requests",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Error importing membership requests", error: error.message });
   }
 };
+
