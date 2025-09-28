@@ -1,21 +1,13 @@
 import PDFDocument from "pdfkit";
-import bwipjs from "bwip-js";
-import fs from "fs";
-import path from "path";
 import Member from "../models/LibraryCard.js";
+import {generateMemberCard} from "../helpers/generateCard.js"
 
-/**
- * Generate library cards in bulk with filters
- */
 export const downloadLibraryCardsPDF = async (req, res) => {
   try {
     const {
       semester,
       course,
-      layout = '2x4', // Cards per page (2 cols x 4 rows = 8 cards per page)
     } = req.query;
-
-    // Build filter object
     const filter = {};
 
     if (course) {
@@ -35,12 +27,6 @@ export const downloadLibraryCardsPDF = async (req, res) => {
         totalMembers: 0
       });
     }
-   /* // Parse layout
-    const [cols, rows] = layout.split('x').map(Number);
-    if (!cols || !rows) {
-      return res.status(400).json({ message: "Invalid layout format" });
-    }
-*/
     const cols =2;
     const rows =4;
 
@@ -127,139 +113,112 @@ export const downloadLibraryCardsPDF = async (req, res) => {
   }
 };
 
-/**
- * Generate individual member card
- */
-const generateMemberCard = async (doc, member, x, y, width, height) => {
-  // Card border and background
-  doc.rect(x, y, width, height)
-     .fillAndStroke('#ffffff', '#cccccc')
-     .lineWidth(1);
 
-  // Header section with logo and library info
-  const headerHeight = 45;
-  
-  // Draw header background
-  doc.rect(x + 1, y + 1, width - 2, headerHeight)
-     .fillAndStroke('#f8f9fa', '#e9ecef');
-
-  // Library logo placeholder (you can add actual logo here)
-  const logoSize = 35;
-  doc.circle(x + 15, y + 22, logoSize/2)
-     .fillAndStroke('#6c757d', '#495057');
-     
-  // Add logo text (replace with actual logo)
-  doc.fontSize(8)
-     .fillColor('#ffffff')
-     .text('LOGO', x + 6, y + 18, { width: logoSize, align: 'center' });
-
-  // Library header text
-  doc.fontSize(12)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text('IIPS Library', x + logoSize + 20, y + 8);
-     
-  doc.fontSize(8)
-     .font('Helvetica')
-     .fillColor('#333333')
-     .text('Devi Ahilya Vishwavidyalaya, Indore', x + logoSize + 20, y + 22)
-     .text('Takshshila Campus, Khandwa Road-452001', x + logoSize + 20, y + 34);
-
-  // Member information section
-  const infoStartY = y + headerHeight + 10;
-  const leftColX = x + 12;
-  const rightColX = x + width/2 + 10;
-  const lineHeight = 14;
-  let currentY = infoStartY;
-
-  // Left column
-  doc.fontSize(9)
-     .fillColor('#000000')
-     .font('Helvetica');
-
-  // Member Number
-  doc.text('Member Id:', leftColX, currentY)
-     .font('Helvetica-Bold')
-     .text(member.memberId , rightColX, currentY);
-  currentY += lineHeight;
-
-  // Name
-  doc.font('Helvetica')
-     .text('Name:', leftColX, currentY)
-     .font('Helvetica-Bold')
-     .text(`${member.firstName} ${member.lastName}`, rightColX, currentY);
-  currentY += lineHeight;
-  
-  doc.font('Helvetica')
-     .text('Enrollment Number:', leftColX, currentY)
-     .font('Helvetica-Bold')
-     .text(`${member.enrollment_number}`, rightColX, currentY);
-  currentY += lineHeight;
-
-  doc.font('Helvetica')
-     .text('Course:', leftColX, currentY)
-     .font('Helvetica-Bold')
-     .text(`${member.course}`, rightColX, currentY);
-  currentY += lineHeight;
-
-  // Mobile Number
-  doc.font('Helvetica')
-     .text('Mobile No:', leftColX, currentY)
-     .font('Helvetica-Bold')
-     .text(member.mobile || 'Not provided', rightColX, currentY);
-  currentY += lineHeight;
-
-  // Generate barcode for member number
+export const previewLibraryCardsPDF = async (req, res) => {
   try {
-    const barcodeText = member.memberId 
-    const barcodeBuffer = await bwipjs.toBuffer({
-      bcid: "code128",
-      text: barcodeText,
-      scale: 1,
-      height: 8,
-      includetext: false,
-      backgroundcolor: 'ffffff',
-      barcolor: '000000'
+    const { semester, course} = req.query;
+
+    const filter = {};
+    if (course && course !== 'all') filter.course = course.toUpperCase();
+    if (semester && semester !== 'all') filter.semester = semester;
+
+    const members = await Member.find(filter).sort({ firstName: 1 });
+
+    if (!members.length) {
+      return res.status(404).json({ message: "No members found for the given filters" });
+    }
+
+    // Parse layout
+    const cols = 2;
+    const rows = 4;
+
+    const doc = new PDFDocument({ size: "A4", margin: 20 });
+    
+    // Create chunks array to collect PDF data
+    const chunks = [];
+    
+    // Listen for data events and collect chunks
+    doc.on('data', (chunk) => {
+      chunks.push(chunk);
     });
 
-    // Position barcode at bottom left
-    const barcodeY = y + height - 35;
-    doc.image(barcodeBuffer, leftColX, barcodeY, {
-      fit: [width - 100, 25]
+    // Promise to handle PDF generation completion
+    const pdfPromise = new Promise((resolve, reject) => {
+      doc.on('end', () => {
+        try {
+          // Combine all chunks into a single buffer
+          const buffer = Buffer.concat(chunks);
+          const base64 = buffer.toString("base64");
+          resolve(base64);
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      doc.on('error', (error) => {
+        reject(error);
+      });
+    });
+
+    // Generate PDF content
+    const cardWidth = 242;
+    const cardHeight = 153;
+    const pageWidth = doc.page.width - 40;
+    const pageHeight = doc.page.height - 40;
+    const spacingX = (pageWidth - cols * cardWidth) / (cols + 1);
+    const spacingY = (pageHeight - rows * cardHeight) / (rows + 1);
+
+    let col = 0, row = 0;
+
+    for (let i = 0; i < members.length; i++) {
+      const member = members[i];
+
+      const x = 20 + spacingX + col * (cardWidth + spacingX);
+      const y = 20 + spacingY + row * (cardHeight + spacingY);
+
+      await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
+
+      col++;
+      if (col >= cols) {
+        col = 0;
+        row++;
+        if (row >= rows && i < members.length - 1) {
+          row = 0;
+          doc.addPage();
+        }
+      }
+    }
+
+    // Finalize the PDF
+    doc.end();
+
+    // Wait for PDF generation to complete
+    const base64PDF = await pdfPromise;
+
+    // Send response with preview data
+    res.json({ 
+      success: true,
+      data: {
+        pdf: base64PDF,
+        totalCards: members.length,
+        totalPages: Math.ceil(members.length / (cols * rows)),
+        layout: { cols, rows },
+        appliedFilters: filter,
+        generatedAt: new Date().toISOString()
+      }
     });
 
   } catch (error) {
-    console.error(`Barcode generation failed for ${member.memberId}:`, error.message);
+    console.error("Preview Error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error generating preview",
+      error: error.message 
+    });
   }
-
-  // Add signature placeholder
-  const signatureX = x + width - 80;
-  const signatureY = y + height - 35;
-  
-  doc.fontSize(8)
-     .fillColor('#666666')
-     .text('(Signature)', signatureX, signatureY + 20, {
-       width: 70,
-       align: 'center'
-     });
-
-  // Add card ID or additional info if needed
-  doc.fontSize(6)
-     .fillColor('#999999')
-     .text(`Generated: ${new Date().toLocaleDateString()}`, x + 5, y + height - 10);
 };
 
-/**
- * Generate member number if not exists
-
-const generateMemberNumber = (member) => {
-  const year = new Date().getFullYear();
-  const courseCode = member.course ? member.course.substring(0, 1) : 'X';
-  const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `${year}-${year + 1}-${courseCode}-${randomNum}`;
-};
- */
-const downloadSingleMemberCard = async (req, res) => {
+export const downloadSingleMemberCard = async (req, res) => {
   try {
     const { memberId } = req.params;
 
@@ -281,5 +240,76 @@ const downloadSingleMemberCard = async (req, res) => {
   } catch (error) {
     console.error('Single card error:', error);
     res.status(500).json({ message: "Error generating member card" });
+  }
+};
+
+export const previewSingleLibraryCardPDF = async (req, res) => {
+  try {
+    const { memberId } = req.query;
+
+    if (!memberId) {
+      return res.status(400).json({ message: "memberId is required" });
+    }
+
+    const member = await Member.findById(memberId);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    // Create PDF document
+    const doc = new PDFDocument({ size: "A4", margin: 20 });
+
+    // Collect PDF data chunks
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+
+    const pdfPromise = new Promise((resolve, reject) => {
+      doc.on("end", () => {
+        try {
+          const buffer = Buffer.concat(chunks);
+          const base64 = buffer.toString("base64");
+          resolve(base64);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      doc.on("error", reject);
+    });
+
+    // Card dimensions
+    const cardWidth = 242;
+    const cardHeight = 153;
+
+    // Center the card on the page
+    const x = (doc.page.width - cardWidth) / 2;
+    const y = (doc.page.height - cardHeight) / 2;
+
+    // Generate the card
+    await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
+
+    // Finalize PDF
+    doc.end();
+
+    // Wait for base64 result
+    const base64PDF = await pdfPromise;
+
+    res.json({
+      success: true,
+      data: {
+        pdf: base64PDF,
+        totalCards: 1,
+        totalPages: 1,
+        layout: { cols: 1, rows: 1 },
+        memberId,
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Single Card Preview Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating single card preview",
+      error: error.message,
+    });
   }
 };
