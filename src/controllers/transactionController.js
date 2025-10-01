@@ -20,9 +20,9 @@ export const getTransactionById = async (req, res) => {
 export const issueBook = async (req, res) => {
   try {
     const { memberId, bookId } = req.body;
-
-    const member = await Member.findById(memberId);
-    const book = await Book.findById(bookId);
+    console.log(req.body)
+    const member = await Member.findOne({ memberId: memberId });
+    const book = await Book.findOne({ accession_number: bookId });
 
     if (!member) return res.status(404).json({ message: "Member not found" });
     if (!book) return res.status(404).json({ message: "Book not found" });
@@ -46,7 +46,8 @@ export const issueBook = async (req, res) => {
 
     res.status(201).json({ message: "Book issued successfully", transaction: txn });
   } catch (error) {
-    res.status(500).json({ message: "Error issuing book", error: error.message });
+    console.log(req.body)
+    res.status(500).json({ message: "Error issuing book", error:error.message });
   }
 };
 

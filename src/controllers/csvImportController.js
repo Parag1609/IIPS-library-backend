@@ -40,6 +40,7 @@ export const importBooksFromCSV = async (req, res) => {
           res.status(201).json({
             message: "CSV Import Completed",
             inserted: inserted.length,
+            requests: inserted,
             skipped: results.length - inserted.length,
           });
         } catch (err) {

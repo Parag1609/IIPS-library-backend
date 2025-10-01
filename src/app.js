@@ -13,13 +13,14 @@ const app = express();
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/members", memberRoutes);
 app.use("/api/membership-requests", membershipRequestRoutes);
 app.use("/api/books", bookRoutes);
-app.use("/api//transactions", transactionRoutes);
+app.use("/api/transactions", transactionRoutes);
 
 // Test route
 app.get("/", (req, res) => {
