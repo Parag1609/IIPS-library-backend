@@ -23,6 +23,7 @@ const memberSchema = new mongoose.Schema({
   address: { type: String, required: true, trim: true },
   photo: { type: String, required: true }, 
   cardStatus: { type: String, enum: ["active", "inactive"], default: "active" },
+  fullName:{ type: String},
   bookIssueLimit: { type: Number, default: 3, min: 1 },
 
   issuedBooks: [

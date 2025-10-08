@@ -22,7 +22,28 @@ const membershipRequestSchema = new mongoose.Schema({
   Address: { type: String, required: true, trim: true },
   Passport_Size_Photo: { type: String, required: true },  
   Fee_Receipt: { type: String, required: true },
-  Status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" }
+  Status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+  Full_Name: { type: String }
 }, { timestamps: true });
+
+membershipRequestSchema.pre("save", function (next) {
+  this.Full_Name = `${this.First_Name} ${this.Surname}`.trim();
+  next();
+});
+
+membershipRequestSchema.pre("findOneAndUpdate", function (next) {
+  const update = this.getUpdate();
+
+  if (update.First_Name || update.Surname) {
+    const firstName = update.First_Name || this.getQuery().First_Name;
+    const surname = update.Surname || this.getQuery().Surname;
+
+    update.Full_Name = `${firstName || ""} ${surname || ""}`.trim();
+    this.setUpdate(update);
+  }
+  next();
+});
+
+
 
 export default mongoose.model("MembershipRequest", membershipRequestSchema);

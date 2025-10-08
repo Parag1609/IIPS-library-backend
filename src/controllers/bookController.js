@@ -26,21 +26,67 @@ export const addBook = async (req, res) => {
  */
 export const getBooks = async (req, res) => {
   try {
-    const { title, author, accession_number, publication } = req.query;
+    const { searchBy, query, page = 1, limit = 1 } = req.query;
 
     let filter = {};
-    if (title) filter.title = new RegExp(title, "i");
-    if (author) filter.author_name = new RegExp(author, "i");
-    if (accession_number) filter.accession_number = accession_number;
-    if (publication) filter.publication = new RegExp(publication, "i");
 
-    const books = await Book.find(filter);
-    res.status(200).json({ success: true, count: books.length, data: books });
+    // If search parameters are provided
+    if (searchBy && query) {
+      const searchQuery = query.trim();
+
+      switch (searchBy) {
+        case "title":
+          filter.title = new RegExp(searchQuery, 'i');
+          break;
+        case "author":
+          filter.author_name = new RegExp(searchQuery, 'i');
+          break;
+        case "publication":
+          filter.publication = new RegExp(searchQuery, 'i');
+          break;
+        case "accession":
+          filter.accession_number = new RegExp(searchQuery, 'i');
+          break;
+        case "supplier":
+          filter.supplier = new RegExp(searchQuery, 'i');
+          break;
+        case "bill":
+          filter.bill_number = new RegExp(searchQuery, 'i');
+          break;
+        default:
+          filter.$or = [
+            { title: new RegExp(searchQuery, 'i') },
+            { author_name: new RegExp(searchQuery, 'i') },
+            { publication: new RegExp(searchQuery, 'i') },
+            { accession_number: new RegExp(searchQuery, 'i') }
+          ];
+      }
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const books = await Book.find(filter)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ title: 1 });
+
+    const totalBooks = await Book.countDocuments(filter);
+
+    res.json({
+      success: true,
+      count: books.length,
+      totalBooks: totalBooks,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalBooks / parseInt(limit)),
+      books: books
+    });
+
   } catch (error) {
+    console.error("Error fetching books:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching books",
-      error: error.message,
+      error: error.message
     });
   }
 };

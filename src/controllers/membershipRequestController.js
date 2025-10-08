@@ -56,25 +56,49 @@ export const createRequest = async (req, res) => {
  */
 export const getAllRequests = async (req, res) => {
   try {
-    // Extract possible query params
-    const { Enrollment_Number, First_Name, Surname, Semester, Course, Mobile, Status } = req.query;
-
-    // Build dynamic filter object
-    let filter = {};
-    if (Enrollment_Number) filter.Enrollment_Number = Enrollment_Number; // exact match
-    if (First_Name) filter.First_Name = new RegExp(First_Name, "i"); // partial, case-insensitive
-    if (Surname) filter.Surname = new RegExp(Surname, "i");
-    if (Semester) filter.Semester = Semester;
-    if (Course) filter.Course = Course;
-    if (Mobile) filter.Mobile = Mobile; // exact match
-    if (Status) filter.Status = Status; // pending, approved, rejected
-
-    // Query requests with filters and sort by newest first
-    const requests = await MembershipRequest.find(filter).sort({ createdAt: -1 });
-
-    res.status(200).json({ success: true, count: requests.length, data: requests });
+    const { status, course, semester, search } = req.query;
+    
+    const filter = {};
+    
+    // Apply filters
+    if (status && status !== 'all') {
+      filter.Status = status;
+    }
+    
+    if (course && course !== 'all') {
+      filter.Course = course.toUpperCase();
+    }
+    
+    if (semester && semester !== 'all') {
+      filter.Semester = semester;
+    }
+    
+    // Search by name or enrollment number
+    if (search && search.trim()) {
+  const regex = new RegExp(search, "i");
+  filter.$or = [
+    { First_Name: regex },
+    { Surname: regex },
+    { Enrollment_Number: regex },
+    { Full_Name: regex }  
+  ];
+}
+    
+    const requests = await MembershipRequest.find(filter)
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      count: requests.length,
+      data: requests
+    });
+    
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error fetching requests", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching membership requests",
+      error: error.message
+    });
   }
 };
 
@@ -103,7 +127,7 @@ export const approveRequest = async (req, res) => {
     const request = await MembershipRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ message: "Request not found" });
 
-    if (request.status === "approved") {
+    if (request.Status === "approved") {
       return res.status(400).json({ message: "Request already approved" });
     }
 
@@ -127,6 +151,7 @@ export const approveRequest = async (req, res) => {
       mobile: request.Mobile,
       address: request.Address,
       photo: request.Passport_Size_Photo,
+      fullName: request.Full_Name,
     });
 
     await newMember.save();
