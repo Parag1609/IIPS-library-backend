@@ -1,24 +1,39 @@
 import PDFDocument from "pdfkit";
 import Member from "../models/LibraryCard.js";
-import {generateMemberCard} from "../helpers/generateCard.js"
+import { generateMemberCard } from "../helpers/generateCard.js"
 
 export const downloadLibraryCardsPDF = async (req, res) => {
   try {
-    const {
-      semester,
-      course,
-    } = req.query;
+    // Extract possible query params
+    const { semester, course, cardStatus, search } = req.query;
     const filter = {};
+    // Apply filters
+    if (cardStatus && cardStatus !== 'all') {
+      filter.Status = cardStatus;
+    }
 
-    if (course) {
-      filter.course = course.toUpperCase();
+    if (course && course !== 'all') {
+      filter.Course = course.toUpperCase();
     }
-    if (semester) {
-      filter.semester = semester;
+
+    if (semester && semester !== 'all') {
+      filter.Semester = semester;
     }
-    // Fetch members with filters
-    const members = await Member.find(filter)
-      .sort({  firstName: 1 });
+    if (search && search.trim()) {
+      const regex = new RegExp(search, "i");
+      filter.$or = [
+        { memberId: regex },
+        { firstName: regex },
+        { surname: regex },
+        { enrollment_number: regex },
+        { fullName: regex },
+      ];
+    }
+    // Query members with optional filters and populate issuedBooks
+    const members = await Member.find(filter).populate(
+      "issuedBooks",
+      "title accession_number author_name"
+    ).sort({ fullName: 1 });
 
     if (!members.length) {
       return res.status(404).json({
@@ -27,8 +42,8 @@ export const downloadLibraryCardsPDF = async (req, res) => {
         totalMembers: 0
       });
     }
-    const cols =2;
-    const rows =4;
+    const cols = 2;
+    const rows = 4;
 
     const doc = new PDFDocument({
       size: "A4",
@@ -49,7 +64,7 @@ export const downloadLibraryCardsPDF = async (req, res) => {
     // Card dimensions (credit card size: 85.6mm x 53.98mm)
     const cardWidth = 242; // ~85.6mm in points
     const cardHeight = 153; // ~53.98mm in points
-    
+
     // Calculate spacing
     const pageWidth = doc.page.width - 40; // Subtract margins
     const pageHeight = doc.page.height - 40;
@@ -70,7 +85,7 @@ export const downloadLibraryCardsPDF = async (req, res) => {
         await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
 
         processedCount++;
-        
+
         // Move to next position
         col++;
         if (col >= cols) {
@@ -116,7 +131,7 @@ export const downloadLibraryCardsPDF = async (req, res) => {
 
 export const previewLibraryCardsPDF = async (req, res) => {
   try {
-    const { semester, course} = req.query;
+    const { semester, course } = req.query;
 
     const filter = {};
     if (course && course !== 'all') filter.course = course.toUpperCase();
@@ -133,10 +148,10 @@ export const previewLibraryCardsPDF = async (req, res) => {
     const rows = 4;
 
     const doc = new PDFDocument({ size: "A4", margin: 20 });
-    
+
     // Create chunks array to collect PDF data
     const chunks = [];
-    
+
     // Listen for data events and collect chunks
     doc.on('data', (chunk) => {
       chunks.push(chunk);
@@ -196,7 +211,7 @@ export const previewLibraryCardsPDF = async (req, res) => {
     const base64PDF = await pdfPromise;
 
     // Send response with preview data
-    res.json({ 
+    res.json({
       success: true,
       data: {
         pdf: base64PDF,
@@ -210,10 +225,10 @@ export const previewLibraryCardsPDF = async (req, res) => {
 
   } catch (error) {
     console.error("Preview Error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: "Error generating preview",
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -228,7 +243,7 @@ export const downloadSingleMemberCard = async (req, res) => {
     }
 
     const doc = new PDFDocument({ size: [242, 153], margin: 0 }); // Credit card size
-    
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${member.memberNumber}_card.pdf"`);
     doc.pipe(res);

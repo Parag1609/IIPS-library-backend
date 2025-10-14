@@ -20,7 +20,7 @@ export const createMember = async (req, res) => {
       address,
       photo,
       cardStatus,
-      bookIssueLimit
+      bookIssueLimit,
     } = req.body;
 
     // check duplicate enrollment
@@ -58,7 +58,7 @@ export const createMember = async (req, res) => {
 export const getAllMembers = async (req, res) => {
   try {
     // Extract possible query params
-    const { memberId, firstName, surname, enrollment_number, semester, course, cardStatus } = req.query;
+    const { memberId, firstName, surname, enrollment_number, semester, course, cardStatus,fullName } = req.query;
 
     // Build dynamic filter object
     let filter = {};
@@ -69,6 +69,7 @@ export const getAllMembers = async (req, res) => {
     if (semester) filter.semester = semester;
     if (course) filter.course = course;
     if (cardStatus) filter.cardStatus = cardStatus;
+    if (fullName) filter.fullName = fullName;
 
     // Query members with optional filters and populate issuedBooks
     const members = await Member.find(filter).populate(
@@ -96,6 +97,25 @@ export const getMemberById = async (req, res) => {
     res.status(500).json({ message: "Error fetching member", error: error.message });
   }
 };
+
+export const getMemberByMemberId = async (req, res)  => {
+  try{
+    const { memberId } = req.query; 
+    console.log(req.query, memberId);
+    if (!memberId) {
+      return res.status(400).json({ message: "memberId is required" });
+    }
+    const member = await Member.findOne({ memberId }); 
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+     res.status(200).json({ success: true, data: member });
+  } catch (error) {
+    console.log(req.query);
+    res.status(500).json({ message: "Error fetching member", error: error });
+  }
+
+}
 
 /**
  * @desc Update member details

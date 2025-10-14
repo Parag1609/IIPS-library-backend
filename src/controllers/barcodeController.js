@@ -4,21 +4,14 @@ import Book from "../models/Book.js";
 
 export const downloadBarcodesGridPDF = async (req, res) => {
   try {
-    const { fromDate, toDate, fromAcc, toAcc, category, author_name } = req.query;
+    const { fromAcc, toAcc, author_name } = req.query;
     const filter = {};
 
-    // Apply filters
-    if (fromDate || toDate) {
-      filter.createdAt = {};
-      if (fromDate) filter.createdAt.$gte = new Date(fromDate);
-      if (toDate) filter.createdAt.$lte = new Date(toDate);
-    }
     if (fromAcc || toAcc) {
       filter.accession_number = {};
       if (fromAcc) filter.accession_number.$gte = fromAcc;
       if (toAcc) filter.accession_number.$lte = toAcc;
     }
-    if (category) filter.category = category;
     if (author_name) filter.author_name = new RegExp(author_name, "i");
 
     const books = await Book.find(filter).sort({ accession_number: 1 });

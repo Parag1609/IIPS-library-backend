@@ -3,6 +3,7 @@ import {
     createMember,
   getAllMembers,
   getMemberById,
+  getMemberByMemberId,
   updateMember,
   updateCardStatus,
   deleteMember,
@@ -16,7 +17,9 @@ const router = express.Router();
 
 router.post("/",createMember);
 router.get("/", getAllMembers);
+router.get("/find", getMemberByMemberId);
 router.get("/:id", getMemberById);
+
 router.put("/:id", updateMember);
 router.patch("/:id/status", updateCardStatus);
 router.delete("/:id", deleteMember);
