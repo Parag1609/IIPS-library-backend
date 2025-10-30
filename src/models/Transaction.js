@@ -15,16 +15,13 @@ const transactionSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  dueDate: {
-    type: Date
-  },
   returnDate: {
     type: Date,
     default: null
   },
   status: {
     type: String,
-    enum: ["issued", "returned", "overdue"],
+    enum: ["issued", "returned"],
     default: "issued"
   }
 }, { timestamps: true });

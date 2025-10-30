@@ -9,15 +9,15 @@ export const downloadLibraryCardsPDF = async (req, res) => {
     const filter = {};
     // Apply filters
     if (cardStatus && cardStatus !== 'all') {
-      filter.Status = cardStatus;
+      filter.cardStatus = cardStatus;
     }
 
     if (course && course !== 'all') {
-      filter.Course = course.toUpperCase();
+      filter.course = course.toUpperCase();
     }
 
     if (semester && semester !== 'all') {
-      filter.Semester = semester;
+      filter.semester = semester;
     }
     if (search && search.trim()) {
       const regex = new RegExp(search, "i");
