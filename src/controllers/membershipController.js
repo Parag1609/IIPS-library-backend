@@ -117,7 +117,12 @@ export const getMemberByMemberId = async (req, res)  => {
     if (!memberId) {
       return res.status(400).json({ message: "memberId is required" });
     }
-    const member = await Member.findOne({ memberId }); 
+    const member = await Member.findOne({ memberId })
+    .populate({
+    path: 'issuedBooks',
+    select: '_id accession_number tile' 
+    });
+    
     if (!member) {
       return res.status(404).json({ message: "Member not found" });
     }

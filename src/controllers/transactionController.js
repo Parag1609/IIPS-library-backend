@@ -51,7 +51,7 @@ export const issueBook = async (req, res) => {
         message: "Member card is not active" 
       });
     }
-
+    console.log(member.issuedBooks ,member.issuedBooks.length)
     // Check if member has reached book limit
     const maxBooksAllowed = member.bookIssueLimit || 3;
     if (member.issuedBooks && member.issuedBooks.length >= maxBooksAllowed) {
@@ -84,11 +84,7 @@ export const issueBook = async (req, res) => {
       });
     }
 
-    // Calculate due date (15 days from now)
     const issueDate = new Date();
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 15);
-
     // Create transaction
     const txn = await Transaction.create([{
       member: member._id,

@@ -26,7 +26,7 @@ export const addBook = async (req, res) => {
  */
 export const getBooks = async (req, res) => {
   try {
-    const { searchBy, query, page = 1, limit = 1 } = req.query;
+    const { searchBy, query, page = 1, limit =20 } = req.query;
 
     let filter = {};
 
