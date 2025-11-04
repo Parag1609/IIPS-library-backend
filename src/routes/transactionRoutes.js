@@ -9,7 +9,7 @@ import {
 const router = express.Router();
 
 router.post("/issue", issueBook);
-router.put("/return/:transactionId", returnBook);
+router.patch("/return", returnBook);
 router.get("/", getTransactions);
 router.get("/:id", getTransactionById);
 

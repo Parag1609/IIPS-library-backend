@@ -1,4 +1,5 @@
 import Book from "../models/Book.js";
+import Member from "../models/LibraryCard.js";
 
 /**
  * Add a new book
@@ -22,16 +23,27 @@ export const addBook = async (req, res) => {
 };
 
 /**
- * Get all books (with optional filters like title/author)
+ * Get all books with enhanced filters and pagination
  */
 export const getBooks = async (req, res) => {
   try {
-    const { searchBy, query, page = 1, limit =20 } = req.query;
+    const { 
+      searchBy, 
+      query, 
+      availabilityStatus,
+      page = 1, 
+      limit = 20 
+    } = req.query;
 
     let filter = {};
 
+    // Apply availability status filter
+    if (availabilityStatus && availabilityStatus !== 'all') {
+      filter.availabilityStatus = availabilityStatus;
+    }
+
     // If search parameters are provided
-    if (searchBy && query) {
+    if (searchBy && query && searchBy !== 'all') {
       const searchQuery = query.trim();
 
       switch (searchBy) {
@@ -54,6 +66,7 @@ export const getBooks = async (req, res) => {
           filter.bill_number = new RegExp(searchQuery, 'i');
           break;
         default:
+          // Search across multiple fields
           filter.$or = [
             { title: new RegExp(searchQuery, 'i') },
             { author_name: new RegExp(searchQuery, 'i') },
@@ -68,7 +81,7 @@ export const getBooks = async (req, res) => {
     const books = await Book.find(filter)
       .skip(skip)
       .limit(parseInt(limit))
-      .sort({ title: 1 });
+      .sort({ accession_number: 1 }); // Sort by accession number
 
     const totalBooks = await Book.countDocuments(filter);
 
@@ -141,16 +154,40 @@ export const updateBook = async (req, res) => {
 };
 
 /**
- * Delete a book
+ * Delete a book - with proper cleanup of references
  */
 export const deleteBook = async (req, res) => {
   try {
-    const deletedBook = await Book.findByIdAndDelete(req.params.id);
-    if (!deletedBook) {
+    const bookId = req.params.id;
+    
+    // Find the book first to check if it exists
+    const book = await Book.findById(bookId);
+    if (!book) {
       return res
         .status(404)
         .json({ success: false, message: "Book not found" });
     }
+
+    // Check if book is currently issued
+    const membersWithBook = await Member.find({
+      'issuedBooks': bookId
+    });
+
+    if (membersWithBook.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete book. It is currently issued to one or more members.",
+        issuedTo: membersWithBook.map(m => ({
+          memberId: m._id,
+          memberName: m.name,
+          email: m.email
+        }))
+      });
+    }
+
+    // If not currently issued, proceed with deletion
+    const deletedBook = await Book.findByIdAndDelete(bookId);
+    
     res.status(200).json({
       success: true,
       message: "Book deleted successfully",
@@ -159,6 +196,31 @@ export const deleteBook = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error deleting book",
+      error: error.message,
+    });
+  }
+};
+
+export const getBookStats = async (req, res) => {
+  try {
+    const totalBooks = await Book.countDocuments();
+    const availableBooks = await Book.countDocuments({ availabilityStatus: 'available' });
+    const issuedBooks = await Book.countDocuments({ availabilityStatus: 'issued' });
+    const lostBooks = await Book.countDocuments({ availabilityStatus: 'lost' });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        total: totalBooks,
+        available: availableBooks,
+        issued: issuedBooks,
+        lost: lostBooks
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching book statistics",
       error: error.message,
     });
   }

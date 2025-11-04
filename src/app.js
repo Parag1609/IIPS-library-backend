@@ -11,6 +11,7 @@ dotenv.config();
 connectDB();
 const app = express();
 
+
 // Middlewares
 app.use(cors());
 app.use(express.json()); // Parse JSON bodies
