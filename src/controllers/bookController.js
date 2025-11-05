@@ -1,5 +1,5 @@
 import Book from "../models/Book.js";
-import Member from "../models/LibraryCard.js";
+import Member from "../models/Member.js";
 
 /**
  * Add a new book

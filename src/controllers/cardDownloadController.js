@@ -1,39 +1,32 @@
 import PDFDocument from "pdfkit";
-import Member from "../models/LibraryCard.js";
+import Member from "../models/Member.js";
 import { generateMemberCard } from "../helpers/generateCard.js"
 
 export const downloadLibraryCardsPDF = async (req, res) => {
   try {
     // Extract possible query params
-    const { semester, course, cardStatus, search } = req.query;
+    const { memberType, cardStatus, course, search } = req.query;
     const filter = {};
-    // Apply filters
-    if (cardStatus && cardStatus !== 'all') {
-      filter.cardStatus = cardStatus;
-    }
 
-    if (course && course !== 'all') {
-      filter.course = course.toUpperCase();
-    }
+    // Filters
+    if (memberType && memberType !== "all") filter.memberType = memberType;
+    if (cardStatus && cardStatus !== "all") filter.cardStatus = cardStatus;
+    if (course && course !== "all") filter.course = course.toUpperCase();
 
-    if (semester && semester !== 'all') {
-      filter.semester = semester;
-    }
+    // Search filter
     if (search && search.trim()) {
       const regex = new RegExp(search, "i");
       filter.$or = [
-        { memberId: regex },
-        { firstName: regex },
-        { surname: regex },
-        { enrollment_number: regex },
-        { fullName: regex },
+        { name: regex },
+        { memberNumber: regex },
+        { membershipId: regex },
       ];
     }
     // Query members with optional filters and populate issuedBooks
     const members = await Member.find(filter).populate(
       "issuedBooks",
       "title accession_number author_name"
-    ).sort({ fullName: 1 });
+    ).sort({ name: 1 });
 
     if (!members.length) {
       return res.status(404).json({
@@ -107,7 +100,7 @@ export const downloadLibraryCardsPDF = async (req, res) => {
       } catch (error) {
         console.error(`Error generating card for member ${member.memberNumber}:`, error.message);
         errors.push({
-          memberId: member.memberId,
+          membershipId: member.membershipId,
           error: error.message
         });
       }
@@ -131,11 +124,10 @@ export const downloadLibraryCardsPDF = async (req, res) => {
 
 export const previewLibraryCardsPDF = async (req, res) => {
   try {
-    const { semester, course } = req.query;
+    const { course } = req.query;
 
     const filter = {};
     if (course && course !== 'all') filter.course = course.toUpperCase();
-    if (semester && semester !== 'all') filter.semester = semester;
 
     const members = await Member.find(filter).sort({ firstName: 1 });
 
@@ -235,9 +227,9 @@ export const previewLibraryCardsPDF = async (req, res) => {
 
 export const downloadSingleMemberCard = async (req, res) => {
   try {
-    const { memberId } = req.params;
+    const { membershipId } = req.params;
 
-    const member = await Member.findById(memberId);
+    const member = await Member.findOne({membershipId:membershipId});
     if (!member) {
       return res.status(404).json({ message: "Member not found" });
     }

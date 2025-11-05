@@ -1,6 +1,6 @@
-import Member from "../models/LibraryCard.js";
+import Member from "../models/Member.js";
 import Book from "../models/Book.js";
-import Transaction from "../models/Transaction.js"; 
+import Transaction from "../models/Transaction.js";
 
 /**
  * @desc Create a new member manually (admin use)
@@ -9,39 +9,39 @@ import Transaction from "../models/Transaction.js";
 export const createMember = async (req, res) => {
   try {
     const {
-      memberId,
-      enrollment_number,
-      firstName,
-      surname,
+      name,
       fatherName,
-      semester,
+      memberType,
+      memberNumber,
       course,
+      yearOfJoining,
       mobile,
+      email,
       address,
       photo,
       cardStatus,
-      bookIssueLimit,
+      bookIssueLimit
     } = req.body;
 
-    // check duplicate enrollment
-    const existing = await Member.findOne({ enrollment_number });
+    // Prevent duplicate memberNumber (roll no / auto generated no.)
+    const existing = await Member.findOne({ memberNumber });
     if (existing) {
-      return res.status(400).json({ message: "Member with this enrollment number already exists" });
+      return res.status(400).json({ message: "Member with this member number already exists" });
     }
 
     const newMember = new Member({
-      memberId,
-      enrollment_number,
-      firstName,
-      surname,
+      name,
       fatherName,
-      semester,
+      memberType,
+      memberNumber,
       course,
+      yearOfJoining,
       mobile,
+      email,
       address,
       photo,
       cardStatus: cardStatus || "active",
-      bookIssueLimit: bookIssueLimit || 3
+      bookIssueLimit
     });
 
     await newMember.save();
@@ -52,38 +52,29 @@ export const createMember = async (req, res) => {
 };
 
 /**
- * @desc Get all members
+ * @desc Get all members (with optional filters)
  * @route GET /api/members
  */
 export const getAllMembers = async (req, res) => {
   try {
-    // Extract possible query params
-    const {  semester, course, cardStatus, search } = req.query;
-    const filter={};
-    // Apply filters
-    if (cardStatus && cardStatus !== 'all') {
-      filter.Status = cardStatus;
-    }
-    
-    if (course && course !== 'all') {
-      filter.Course = course.toUpperCase();
-    }
-    
-    if (semester && semester !== 'all') {
-      filter.Semester = semester;
-    }
-    if (search && search.trim()) {
-  const regex = new RegExp(search, "i");
-  filter.$or = [
-    { memberId: regex},
-    { firstName: regex },
-    { surname: regex },
-    { enrollment_number: regex },
-    { fullName: regex },
-  ];
-}
+    const { memberType, cardStatus, course, search } = req.query;
+    const filter = {};
 
-    // Query members with optional filters and populate issuedBooks
+    // Filters
+    if (memberType && memberType !== "all") filter.memberType = memberType;
+    if (cardStatus && cardStatus !== "all") filter.cardStatus = cardStatus;
+    if (course && course !== "all") filter.course = course.toUpperCase();
+
+    // Search filter
+    if (search && search.trim()) {
+      const regex = new RegExp(search, "i");
+      filter.$or = [
+        { name: regex },
+        { memberNumber: regex },
+        { membershipId: regex },
+      ];
+    }
+
     const members = await Member.find(filter).populate(
       "issuedBooks",
       "title accession_number author_name"
@@ -95,44 +86,51 @@ export const getAllMembers = async (req, res) => {
   }
 };
 
-
 /**
- * @desc Get member by ID
+ * @desc Get member by MongoDB _id
  * @route GET /api/members/:id
  */
 export const getMemberById = async (req, res) => {
   try {
-    const member = await Member.findById(req.params.id).populate("issuedBooks", "title accession_number author_name");
+    const member = await Member.findById(req.params.id).populate(
+      "issuedBooks",
+      "title accession_number author_name"
+    );
+
     if (!member) return res.status(404).json({ message: "Member not found" });
+
     res.status(200).json(member);
   } catch (error) {
     res.status(500).json({ message: "Error fetching member", error: error.message });
   }
 };
 
-export const getMemberByMemberId = async (req, res)  => {
-  try{
-    const { memberId } = req.query; 
-    console.log(req.query, memberId);
-    if (!memberId) {
-      return res.status(400).json({ message: "memberId is required" });
+/**
+ * @desc Get member by membershipId (barcode linked ID)
+ * @route GET /api/members/memberid?membershipId=XYZ
+ */
+export const getMemberByMemberId = async (req, res) => {
+  try {
+    const { membershipId } = req.query;
+
+    if (!membershipId) {
+      return res.status(400).json({ message: "membershipId is required" });
     }
-    const member = await Member.findOne({ memberId })
-    .populate({
-    path: 'issuedBooks',
-    select: '_id accession_number tile' 
+
+    const member = await Member.findOne({ membershipId }).populate({
+      path: "issuedBooks",
+      select: "_id accession_number title",
     });
-    
+
     if (!member) {
       return res.status(404).json({ message: "Member not found" });
     }
-     res.status(200).json({ success: true, data: member });
-  } catch (error) {
-    console.log(req.query);
-    res.status(500).json({ message: "Error fetching member", error: error });
-  }
 
-}
+    res.status(200).json({ success: true, data: member });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching member", error: error.message });
+  }
+};
 
 /**
  * @desc Update member details
@@ -149,28 +147,55 @@ export const updateMember = async (req, res) => {
 };
 
 /**
- * @desc Activate/Deactivate card
+ * @desc Activate/Deactivate member card
  * @route PATCH /api/members/:id/status
  */
 export const updateCardStatus = async (req, res) => {
   try {
     const { cardStatus } = req.body;
+    const { id } = req.params;
+
     if (!["active", "inactive"].includes(cardStatus)) {
       return res.status(400).json({ message: "Invalid card status" });
     }
 
-    const member = await Member.findByIdAndUpdate(
-      req.params.id,
-      { cardStatus },
-      { new: true }
-    );
-    if (!member) return res.status(404).json({ message: "Member not found" });
+    // Find the member and populate issuedBooks
+    const member = await Member.findById(id).populate("issuedBooks", "_id title");
 
-    res.status(200).json({ message: `Card ${cardStatus} successfully`, member });
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    // Prevent deactivation if books are still issued
+    if (cardStatus === "inactive" && member.issuedBooks?.length > 0) {
+      return res.status(400).json({
+        message:
+          "Cannot deactivate card — member still has issued books. Please return all books first.",
+        issuedBooks: member.issuedBooks.map((b) => ({
+          title: b.title,
+          id: b._id,
+        })),
+      });
+    }
+
+    // Update card status
+    member.cardStatus = cardStatus;
+    await member.save();
+
+    res.status(200).json({
+      message: `Card ${cardStatus} successfully`,
+      member,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error updating card status", error: error.message });
+    console.error("Error updating card status:", error);
+    res.status(500).json({
+      message: "Error updating card status",
+      error: error.message,
+    });
   }
 };
+
+
 /**
  * @desc Delete member
  * @route DELETE /api/members/:id

@@ -1,5 +1,5 @@
 import MembershipRequest from "../models/MembershipRequest.js";
-import Member from "../models/LibraryCard.js";
+import Member from "../models/Member.js";
 
 /**
  * @desc Create a new membership request

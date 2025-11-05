@@ -48,29 +48,29 @@ export const generateMemberCard = async (doc, member, x, y, width, height) => {
      .font('Helvetica');
 
   // Member Number
-  doc.text('Member Id:', leftColX, currentY)
+  doc.text('Membership Id:', leftColX, currentY)
      .font('Helvetica-Bold')
-     .text(member.memberId , rightColX, currentY);
+     .text(`${member.membershipId}` , rightColX, currentY);
   currentY += lineHeight;
 
   // Name
   doc.font('Helvetica')
      .text('Name:', leftColX, currentY)
      .font('Helvetica-Bold')
-     .text(`${member.firstName} ${member.lastName}`, rightColX, currentY);
+     .text(`${member.name}`, rightColX, currentY);
   currentY += lineHeight;
   
   doc.font('Helvetica')
-     .text('Enrollment Number:', leftColX, currentY)
+     .text('Roll Number', leftColX, currentY)
      .font('Helvetica-Bold')
-     .text(`${member.enrollment_number}`, rightColX, currentY);
+     .text(`${member.memberNumber}`, rightColX, currentY);
   currentY += lineHeight;
 
-  doc.font('Helvetica')
+ {member.course && doc.font('Helvetica')
      .text('Course:', leftColX, currentY)
      .font('Helvetica-Bold')
      .text(`${member.course}`, rightColX, currentY);
-  currentY += lineHeight;
+  currentY += lineHeight;}
 
   // Mobile Number
   doc.font('Helvetica')
@@ -81,7 +81,7 @@ export const generateMemberCard = async (doc, member, x, y, width, height) => {
 
   // Generate barcode for member number
   try {
-    const barcodeText = member.memberId 
+    const barcodeText = member.membershipId 
     const barcodeBuffer = await bwipjs.toBuffer({
       bcid: "code128",
       text: barcodeText,
@@ -99,7 +99,7 @@ export const generateMemberCard = async (doc, member, x, y, width, height) => {
     });
 
   } catch (error) {
-    console.error(`Barcode generation failed for ${member.memberId}:`, error.message);
+    console.error(`Barcode generation failed for ${member.membershipId}:`, error.message);
   }
 
   // Add signature placeholder
