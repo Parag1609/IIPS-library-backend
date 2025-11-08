@@ -111,7 +111,6 @@ const memberSchema = new mongoose.Schema({
 });
 
 // Indexes
-memberSchema.index({ membershipId: 1 }, { unique: true });
 memberSchema.index({ memberType: 1 });
 memberSchema.index({ memberNumber: 1 }, { unique: true });
 memberSchema.index({ cardStatus: 1 });
@@ -134,8 +133,6 @@ memberSchema.pre("validate", function (next) {
   next();
 });
 
-// ✅ Pre-save hook for auto-generating memberNumber (for faculty/special)
-// ✅ and membershipId (for everyone)
 memberSchema.pre("save", async function (next) {
   try {
     const Member = mongoose.model("Member");
