@@ -1,4 +1,3 @@
-import https from 'https';
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -10,8 +9,6 @@ import transactionRoutes from "./routes/transactionRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import { protect } from './middleware/auth.js';
 
-// Configure HTTPS agent for all requests
-https.globalAgent.options.rejectUnauthorized = false; // Dev only!
 dotenv.config();
 connectDB();
 const app = express();

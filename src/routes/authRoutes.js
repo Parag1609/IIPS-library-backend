@@ -8,10 +8,11 @@ import {
   resetPassword      
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
+import { loginLimiter } from '../middleware/loginLimiter.js';
 
 const router = express.Router();
 
-router.post('/login', login);
+router.post('/login',loginLimiter, login);
 router.get('/me', protect, getMe);
 router.post('/logout', protect, logout);
 router.put('/change-password', protect, changePassword);
