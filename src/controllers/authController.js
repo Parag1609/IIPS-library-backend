@@ -233,3 +233,12 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const checkAdminExists = async (req, res) => {
+  try {
+    const count = await Admin.countDocuments();
+    res.json({ exists: count > 0 });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};

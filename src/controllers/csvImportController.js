@@ -82,17 +82,17 @@ export const importMembershipRequestsFromCSV = async (req, res) => {
       .on("end", async () => {
         try {
           const requestsToInsert = results.map((record) => ({
-            Enrollment_Number: record.Enrollment_Number?.trim().toUpperCase(),
-            First_Name: record.First_Name?.trim(),
-            Surname: record.Surname?.trim(),
-            Fathers_Name: record.Fathers_Name?.trim(),
-            Semester: record.Semester?.trim(),
-            Course: record.Course?.trim(),
-            Mobile: record.Mobile?.trim(),
-            Address: record.Address?.trim(),
-            Passport_Size_Photo: record.Passport_Size_Photo?.trim(),
-            Fee_Receipt: record.Fee_Receipt?.trim(),
-            Status: record.Status || "pending"
+                memberNumber: memberNumber.trim().toUpperCase(),
+                name: record.name?.trim(),
+                fatherName: record.fatherName?.trim() || undefined,
+                yearOfJoining: record.yearOfJoining,
+                course: record.course?.trim(),
+                mobile: record.mobile?.trim(),
+                email: record.email?.trim() || undefined,
+                address: record.address?.trim(),
+                passportPhoto: record.passportPhoto?.trim(),
+                feeReceipt: record.feeReceipt?.trim(),
+                status: "pending"
           }));
 
           const inserted = await MembershipRequest.insertMany(requestsToInsert, { ordered: false });
