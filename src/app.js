@@ -7,6 +7,7 @@ import membershipRequestRoutes from "./routes/membershipRequestRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import { protect } from './middleware/auth.js';
 
 dotenv.config();
@@ -24,6 +25,7 @@ app.use("/api/members",protect, memberRoutes);
 app.use("/api/membership-requests",protect, membershipRequestRoutes);
 app.use("/api/books",protect, bookRoutes);
 app.use("/api/transactions",protect, transactionRoutes);
+app.use("/api/report",protect,reportRoutes);
 
 // Test route
 app.get("/", (req, res) => {
