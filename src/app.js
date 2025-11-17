@@ -25,7 +25,7 @@ app.use("/api/members",protect, memberRoutes);
 app.use("/api/membership-requests",protect, membershipRequestRoutes);
 app.use("/api/books",protect, bookRoutes);
 app.use("/api/transactions",protect, transactionRoutes);
-app.use("/api/report",protect,reportRoutes);
+app.use("/api/reports",protect,reportRoutes);
 
 // Test route
 app.get("/", (req, res) => {

@@ -1,322 +1,331 @@
 import PDFDocument from "pdfkit";
 import Member from "../models/Member.js";
 import { generateMemberCard } from "../helpers/generateCard.js"
+import bwipjs from "bwip-js"; // Assuming this is installed
+
+// NOTE: This controller assumes 'bwipjs' and 'pdfkit' are installed and configured correctly.
 
 export const downloadLibraryCardsPDF = async (req, res) => {
-  try {
-    // Extract possible query params
-    const { memberType, cardStatus, course, search } = req.query;
-    const filter = {};
+  try {
+    // Extract possible query params
+    const { memberType, cardStatus, course, search } = req.query;
+    const filter = {};
 
-    // Filters
-    if (memberType && memberType !== "all") filter.memberType = memberType;
-    if (cardStatus && cardStatus !== "all") filter.cardStatus = cardStatus;
-    if (course && course !== "all") filter.course = course.toUpperCase();
+    // Filters rely on indexed fields for speed (memberType, cardStatus, course)
+    if (memberType && memberType !== "all") filter.memberType = memberType;
+    if (cardStatus && cardStatus !== "all") filter.cardStatus = cardStatus;
+    if (course && course !== "all") filter.course = course.toUpperCase();
 
-    // Search filter
-    if (search && search.trim()) {
-      const regex = new RegExp(search, "i");
-      filter.$or = [
-        { name: regex },
-        { memberNumber: regex },
-        { membershipId: regex },
-      ];
-    }
-    // Query members with optional filters and populate issuedBooks
-    const members = await Member.find(filter).populate(
-      "issuedBooks",
-      "title accession_number author_name"
-    ).sort({ name: 1 });
+    // Search filter
+    if (search && search.trim()) {
+      const regex = new RegExp(search, "i");
+      filter.$or = [
+        { name: regex },
+        { memberNumber: regex },
+        { membershipId: regex }, // membershipId is indexed
+      ];
+    }
+    // Query members: uses indexed fields for filtering and sorting
+    const members = await Member.find(filter).populate(
+      "issuedBooks",
+      "title accession_number author_name"
+    ).sort({ name: 1 }); // name field may benefit from an index if frequently sorted
 
-    if (!members.length) {
-      return res.status(404).json({
-        message: "No members found for the given filters",
-        appliedFilters: filter,
-        totalMembers: 0
-      });
-    }
-    const cols = 2;
-    const rows = 4;
+    if (!members.length) {
+      return res.status(404).json({
+        message: "No members found for the given filters",
+        appliedFilters: filter,
+        totalMembers: 0
+      });
+    }
+    
+    // PDF generation logic (no DB interaction, thus fast)
+    const cols = 2;
+    const rows = 4;
 
-    const doc = new PDFDocument({
-      size: "A4",
-      margin: 20,
-      info: {
-        Title: `Library Cards - ${new Date().toLocaleDateString()}`,
-        Subject: 'Library Member Cards',
-        Keywords: 'library, cards, members'
-      }
-    });
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 20,
+      info: {
+        Title: `Library Cards - ${new Date().toLocaleDateString()}`,
+        Subject: 'Library Member Cards',
+        Keywords: 'library, cards, members'
+      }
+    });
 
-    // Set response headers
-    const filename = `library-cards-${new Date().toISOString().split('T')[0]}.pdf`;
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    doc.pipe(res);
+    // Set response headers
+    const filename = `library-cards-${new Date().toISOString().split('T')[0]}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    doc.pipe(res);
 
-    // Card dimensions (credit card size: 85.6mm x 53.98mm)
-    const cardWidth = 242; // ~85.6mm in points
-    const cardHeight = 153; // ~53.98mm in points
+    // Card dimensions
+    const cardWidth = 242;
+    const cardHeight = 153;
 
-    // Calculate spacing
-    const pageWidth = doc.page.width - 40; // Subtract margins
-    const pageHeight = doc.page.height - 40;
-    const spacingX = (pageWidth - (cols * cardWidth)) / (cols + 1);
-    const spacingY = (pageHeight - (rows * cardHeight)) / (rows + 1);
+    // Calculate spacing
+    const pageWidth = doc.page.width - 40; 
+    const pageHeight = doc.page.height - 40;
+    const spacingX = (pageWidth - (cols * cardWidth)) / (cols + 1);
+    const spacingY = (pageHeight - (rows * cardHeight)) / (rows + 1);
 
-    let col = 0, row = 0, processedCount = 0;
-    const errors = [];
+    let col = 0, row = 0, processedCount = 0;
+    const errors = [];
 
-    // Process each member
-    for (const member of members) {
-      try {
-        // Calculate card position
-        const x = 20 + spacingX + col * (cardWidth + spacingX);
-        const y = 20 + spacingY + row * (cardHeight + spacingY);
+    // Process each member
+    for (const member of members) {
+      try {
+        // Calculate card position
+        const x = 20 + spacingX + col * (cardWidth + spacingX);
+        const y = 20 + spacingY + row * (cardHeight + spacingY);
 
-        // Generate member card
-        await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
+        // Generate member card
+        await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
 
-        processedCount++;
+        processedCount++;
 
-        // Move to next position
-        col++;
-        if (col >= cols) {
-          col = 0;
-          row++;
-          if (row >= rows) {
-            row = 0;
-            if (processedCount < members.length) {
-              doc.addPage();
-            }
-          }
-        }
+        // Move to next position
+        col++;
+        if (col >= cols) {
+          col = 0;
+          row++;
+          if (row >= rows) {
+            row = 0;
+            if (processedCount < members.length) {
+              doc.addPage();
+            }
+          }
+        }
 
-        // Progress logging
-        if (processedCount % 20 === 0) {
-          console.log(`Generated ${processedCount}/${members.length} cards`);
-        }
+        // Progress logging
+        if (processedCount % 20 === 0) {
+          console.log(`Generated ${processedCount}/${members.length} cards`);
+        }
 
-      } catch (error) {
-        console.error(`Error generating card for member ${member.memberNumber}:`, error.message);
-        errors.push({
-          membershipId: member.membershipId,
-          error: error.message
-        });
-      }
-    }
+      } catch (error) {
+        console.error(`Error generating card for member ${member.memberNumber}:`, error.message);
+        errors.push({
+          membershipId: member.membershipId,
+          error: error.message
+        });
+      }
+    }
 
 
-    doc.end();
-    console.log(`Card generation completed. Generated: ${processedCount}, Errors: ${errors.length}`);
+    doc.end();
+    console.log(`Card generation completed. Generated: ${processedCount}, Errors: ${errors.length}`);
 
-  } catch (error) {
-    console.error('Card Generation Error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        message: "Error generating library cards",
-        error: error.message
-      });
-    }
-  }
+  } catch (error) {
+    console.error('Card Generation Error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        message: "Error generating library cards",
+        error: error.message
+      });
+    }
+  }
 };
 
 
 export const previewLibraryCardsPDF = async (req, res) => {
-  try {
-    const { course } = req.query;
+  try {
+    const { course } = req.query;
 
-    const filter = {};
-    if (course && course !== 'all') filter.course = course.toUpperCase();
+    const filter = {};
+    if (course && course !== 'all') filter.course = course.toUpperCase();
 
-    const members = await Member.find(filter).sort({ firstName: 1 });
+    // Query members: fast filter due to course index
+    const members = await Member.find(filter).sort({ firstName: 1 });
 
-    if (!members.length) {
-      return res.status(404).json({ message: "No members found for the given filters" });
-    }
+    if (!members.length) {
+      return res.status(404).json({ message: "No members found for the given filters" });
+    }
 
-    // Parse layout
-    const cols = 2;
-    const rows = 4;
+    // PDF generation logic follows... (No DB optimization needed here, only query above)
+    const cols = 2;
+    const rows = 4;
 
-    const doc = new PDFDocument({ size: "A4", margin: 20 });
+    const doc = new PDFDocument({ size: "A4", margin: 20 });
 
-    // Create chunks array to collect PDF data
-    const chunks = [];
+    // Create chunks array to collect PDF data
+    const chunks = [];
 
-    // Listen for data events and collect chunks
-    doc.on('data', (chunk) => {
-      chunks.push(chunk);
-    });
+    // Listen for data events and collect chunks
+    doc.on('data', (chunk) => {
+      chunks.push(chunk);
+    });
 
-    // Promise to handle PDF generation completion
-    const pdfPromise = new Promise((resolve, reject) => {
-      doc.on('end', () => {
-        try {
-          // Combine all chunks into a single buffer
-          const buffer = Buffer.concat(chunks);
-          const base64 = buffer.toString("base64");
-          resolve(base64);
-        } catch (error) {
-          reject(error);
-        }
-      });
+    // Promise to handle PDF generation completion
+    const pdfPromise = new Promise((resolve, reject) => {
+      doc.on('end', () => {
+        try {
+          // Combine all chunks into a single buffer
+          const buffer = Buffer.concat(chunks);
+          const base64 = buffer.toString("base64");
+          resolve(base64);
+        } catch (error) {
+          reject(error);
+        }
+      });
 
-      doc.on('error', (error) => {
-        reject(error);
-      });
-    });
+      doc.on('error', (error) => {
+        reject(error);
+      });
+    });
 
-    // Generate PDF content
-    const cardWidth = 242;
-    const cardHeight = 153;
-    const pageWidth = doc.page.width - 40;
-    const pageHeight = doc.page.height - 40;
-    const spacingX = (pageWidth - cols * cardWidth) / (cols + 1);
-    const spacingY = (pageHeight - rows * cardHeight) / (rows + 1);
+    // Generate PDF content
+    const cardWidth = 242;
+    const cardHeight = 153;
+    const pageWidth = doc.page.width - 40;
+    const pageHeight = doc.page.height - 40;
+    const spacingX = (pageWidth - cols * cardWidth) / (cols + 1);
+    const spacingY = (pageHeight - rows * cardHeight) / (rows + 1);
 
-    let col = 0, row = 0;
+    let col = 0, row = 0;
 
-    for (let i = 0; i < members.length; i++) {
-      const member = members[i];
+    for (let i = 0; i < members.length; i++) {
+      const member = members[i];
 
-      const x = 20 + spacingX + col * (cardWidth + spacingX);
-      const y = 20 + spacingY + row * (cardHeight + spacingY);
+      const x = 20 + spacingX + col * (cardWidth + spacingX);
+      const y = 20 + spacingY + row * (cardHeight + spacingY);
 
-      await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
+      await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
 
-      col++;
-      if (col >= cols) {
-        col = 0;
-        row++;
-        if (row >= rows && i < members.length - 1) {
-          row = 0;
-          doc.addPage();
-        }
-      }
-    }
+      col++;
+      if (col >= cols) {
+        col = 0;
+        row++;
+        if (row >= rows && i < members.length - 1) {
+          row = 0;
+          doc.addPage();
+        }
+      }
+    }
 
-    // Finalize the PDF
-    doc.end();
+    // Finalize the PDF
+    doc.end();
 
-    // Wait for PDF generation to complete
-    const base64PDF = await pdfPromise;
+    // Wait for PDF generation to complete
+    const base64PDF = await pdfPromise;
 
-    // Send response with preview data
-    res.json({
-      success: true,
-      data: {
-        pdf: base64PDF,
-        totalCards: members.length,
-        totalPages: Math.ceil(members.length / (cols * rows)),
-        layout: { cols, rows },
-        appliedFilters: filter,
-        generatedAt: new Date().toISOString()
-      }
-    });
+    // Send response with preview data
+    res.json({
+      success: true,
+      data: {
+        pdf: base64PDF,
+        totalCards: members.length,
+        totalPages: Math.ceil(members.length / (cols * rows)),
+        layout: { cols, rows },
+        appliedFilters: filter,
+        generatedAt: new Date().toISOString()
+      }
+    });
 
-  } catch (error) {
-    console.error("Preview Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error generating preview",
-      error: error.message
-    });
-  }
+  } catch (error) {
+    console.error("Preview Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating preview",
+      error: error.message
+    });
+  }
 };
 
 export const downloadSingleMemberCard = async (req, res) => {
-  try {
-    const { membershipId } = req.params;
+  try {
+    const { membershipId } = req.params;
 
-    const member = await Member.findOne({membershipId:membershipId});
-    if (!member) {
-      return res.status(404).json({ message: "Member not found" });
-    }
+    // Fast lookup by unique membershipId index
+    const member = await Member.findOne({membershipId:membershipId});
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
 
-    const doc = new PDFDocument({ size: [242, 153], margin: 0 }); // Credit card size
+    const doc = new PDFDocument({ size: [242, 153], margin: 0 }); // Credit card size
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${member.memberNumber}_card.pdf"`);
-    doc.pipe(res);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${member.memberNumber}_card.pdf"`);
+    doc.pipe(res);
 
-    await generateMemberCard(doc, member, 0, 0, 242, 153);
+    await generateMemberCard(doc, member, 0, 0, 242, 153);
 
-    doc.end();
+    doc.end();
 
-  } catch (error) {
-    console.error('Single card error:', error);
-    res.status(500).json({ message: "Error generating member card" });
-  }
+  } catch (error) {
+    console.error('Single card error:', error);
+    res.status(500).json({ message: "Error generating member card" });
+  }
 };
 
 export const previewSingleLibraryCardPDF = async (req, res) => {
-  try {
-    const { memberId } = req.query;
+  try {
+    const { memberId } = req.query;
 
-    if (!memberId) {
-      return res.status(400).json({ message: "memberId is required" });
-    }
+    if (!memberId) {
+      return res.status(400).json({ message: "memberId is required" });
+    }
 
-    const member = await Member.findById(memberId);
-    if (!member) {
-      return res.status(404).json({ message: "Member not found" });
-    }
+    // Fast lookup by MongoDB _id (default index)
+    const member = await Member.findById(memberId);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
 
-    // Create PDF document
-    const doc = new PDFDocument({ size: "A4", margin: 20 });
+    // PDF generation logic follows...
+    const doc = new PDFDocument({ size: "A4", margin: 20 });
 
-    // Collect PDF data chunks
-    const chunks = [];
-    doc.on("data", (chunk) => chunks.push(chunk));
+    // Collect PDF data chunks
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
 
-    const pdfPromise = new Promise((resolve, reject) => {
-      doc.on("end", () => {
-        try {
-          const buffer = Buffer.concat(chunks);
-          const base64 = buffer.toString("base64");
-          resolve(base64);
-        } catch (error) {
-          reject(error);
-        }
-      });
-      doc.on("error", reject);
-    });
+    const pdfPromise = new Promise((resolve, reject) => {
+      doc.on("end", () => {
+        try {
+          const buffer = Buffer.concat(chunks);
+          const base64 = buffer.toString("base64");
+          resolve(base64);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      doc.on("error", reject);
+    });
 
-    // Card dimensions
-    const cardWidth = 242;
-    const cardHeight = 153;
+    // Card dimensions
+    const cardWidth = 242;
+    const cardHeight = 153;
 
-    // Center the card on the page
-    const x = (doc.page.width - cardWidth) / 2;
-    const y = (doc.page.height - cardHeight) / 2;
+    // Center the card on the page
+    const x = (doc.page.width - cardWidth) / 2;
+    const y = (doc.page.height - cardHeight) / 2;
 
-    // Generate the card
-    await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
+    // Generate the card
+    await generateMemberCard(doc, member, x, y, cardWidth, cardHeight);
 
-    // Finalize PDF
-    doc.end();
+    // Finalize PDF
+    doc.end();
 
-    // Wait for base64 result
-    const base64PDF = await pdfPromise;
+    // Wait for base64 result
+    const base64PDF = await pdfPromise;
 
-    res.json({
-      success: true,
-      data: {
-        pdf: base64PDF,
-        totalCards: 1,
-        totalPages: 1,
-        layout: { cols: 1, rows: 1 },
-        memberId,
-        generatedAt: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    console.error("Single Card Preview Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error generating single card preview",
-      error: error.message,
-    });
-  }
+    res.json({
+      success: true,
+      data: {
+        pdf: base64PDF,
+        totalCards: 1,
+        totalPages: 1,
+        layout: { cols: 1, rows: 1 },
+        memberId,
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Single Card Preview Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating single card preview",
+      error: error.message,
+    });
+  }
 };
+

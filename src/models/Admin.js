@@ -43,7 +43,6 @@ const adminSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// 🔒 Hash password before saving
 adminSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
@@ -51,12 +50,10 @@ adminSchema.pre('save', async function (next) {
   next();
 });
 
-// 🔐 Compare entered password with stored hash
 adminSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// 🧠 Prevent creation of more than one admin
 adminSchema.pre('save', async function (next) {
   const existingAdmin = await mongoose.model('Admin').countDocuments();
   if (existingAdmin > 0 && this.isNew) {
