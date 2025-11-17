@@ -15,6 +15,10 @@ const transactionSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+ dueDate: {
+    type: Date,
+    default: null
+  },
   returnDate: {
     type: Date,
     default: null
