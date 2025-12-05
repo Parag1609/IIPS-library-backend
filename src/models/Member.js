@@ -109,17 +109,13 @@ const memberSchema = new mongoose.Schema({
   timestamps: true 
 });
 
-// --- Performance Indices (Existing) ---
-// Index 1: for filtering (reports)
+// --- Performance Indices 
 memberSchema.index({ memberType: 1 });
 // Index 2: for quick lookup and uniqueness
 memberSchema.index({ memberNumber: 1 }, { unique: true });
 // Index 3: for filtering (reports)
 memberSchema.index({ cardStatus: 1 });
 
-
-// --- Performance Indices (Added for Scalability) ---
-// Index 4: Critical for fast barcode/ID lookups (getMemberByMemberId)
 memberSchema.index({ membershipId: 1 }, { unique: true });
 // Index 5: Critical for Membership Deletion check (if a book is currently issued)
 memberSchema.index({ issuedBooks: 1 }); 

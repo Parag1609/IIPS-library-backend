@@ -121,29 +121,33 @@ export const importMembershipRequestsFromCSV = async (req, res) => {
         try {
           // 1. Pre-process records and validate required fields
           const validRequests = results.map((record) => {
-                const memberNumber = record.Roll_Number?.trim().toUpperCase();
-                const yearOfJoining = parseInt(record.YearOfJoining);
+    // 1. Assign the fields to variables using the CORRECT CSV headers
+    const memberNumber = record.Roll_Number?.trim().toUpperCase(); 
+    const name = record.Name?.trim(); // FIX: Use 'Name' from CSV
+    const course = record.Course?.trim();
+    const mobile = record.Mobile?.trim();
+    const yearOfJoining = parseInt(record.YearOfJoini); // (Using previous fix for YearOfJoini)
 
-                if (!memberNumber || !record.name || !record.course || !record.mobile) {
-                    return null; // Skip records missing critical fields
-                }
+    // 2. Perform the validation check using the CORRECT variables
+    if (!memberNumber || !name || !course || !mobile) {
+        return null; // Skip records missing critical fields
+    }
 
-                return {
-                    memberNumber: memberNumber, // FIXED: Used defined variable
-                    name: record.Name?.trim(),
-                    fatherName: record.Fathers_Name?.trim() || undefined,
-                    // FIXED: Explicitly convert to Number (required by schema)
-                    yearOfJoining: isNaN(yearOfJoining) ? undefined : yearOfJoining, 
-                    course: record.Course?.trim(),
-                    mobile: record.Mobile?.trim(),
-                    email: record.Gmail_Id?.trim() || undefined,
-                    address: record.Address?.trim(),
-                    // Note: Assuming passportPhoto and feeReceipt are file paths provided in the CSV
-                    passportPhoto: record.Passport_Size_Photo?.trim(),
-                    fee_receipt: record.Fee_Receipt?.trim(), // Schema uses fee_receipt
-                    status: "pending"
-                };
-          }).filter(r => r !== null && r.memberNumber);
+    // 3. Map to the final database schema
+    return {
+        memberNumber: memberNumber, 
+        name: name, // FIX: Map the local 'name' variable
+        fatherName: record.Fathers_Name?.trim() || undefined, 
+        yearOfJoining: isNaN(yearOfJoining) ? undefined : yearOfJoining, 
+        course: course,
+        mobile: mobile,
+        email: record.Gmail_Id?.trim() || undefined,
+        address: record.Address?.trim(),
+        passportPhoto: record.Passport_Si?.trim(), 
+        feeReceipt: record.Fee_Receipt?.trim(), // Ensure this matches your schema (e.g., feeReceipt)
+        status: "pending"
+    };
+}).filter(r => r !== null && r.memberNumber);
           
           const memberNumbersToProcess = validRequests.map(r => r.memberNumber);
           

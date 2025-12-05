@@ -44,14 +44,9 @@ transactionSchema.pre("save", function (next) {
 });
 
 // --- Performance Indices ---
-// Index 1: Transaction lookup/uniqueness check (existing)
 transactionSchema.index({ member: 1, book: 1, status: 1 });
-
-// Index 2: Critical for all Date-Range reports (Daily, Weekly, Monthly, Custom)
 transactionSchema.index({ issueDate: 1 });
 transactionSchema.index({ returnDate: 1 });
-
-// Index 3: Critical for Member Deletion check (Transaction.countDocuments({ member: memberId }))
 transactionSchema.index({ member: 1 }); 
 
 export default mongoose.model("Transaction", transactionSchema);
