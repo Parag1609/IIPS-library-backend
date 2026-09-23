@@ -6,6 +6,40 @@ import mongoose from "mongoose";
 /**
  * @desc Issue a book to a member
  * @route POST /api/transactions/issue
+ * // This is the important concurrency protection.
+    //
+    // MongoDB will update the book ONLY IF:
+    // accession_number matches AND
+    // availabilityStatus is still "available".
+    //
+    // If another librarian has already issued it,
+    // this query will return null.
+    //
+    const book = await Book.findOneAndUpdate(
+      {
+        accession_number: bookId,
+        availabilityStatus: "available"
+      },
+      {
+        $set: {
+          availabilityStatus: "issued"
+        }
+      },
+      {
+        new: true,
+        session
+      }
+    );
+    // 5. Book was already issued / unavailable
+    if (!book) {
+      await session.abortTransaction();
+
+      return res.status(409).json({
+        success: false,
+        message: "Book is no longer available for issue"
+      });
+    }
+
  */
 export const issueBook = async (req, res) => {
   const session = await mongoose.startSession();
